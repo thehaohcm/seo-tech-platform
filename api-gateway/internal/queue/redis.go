@@ -49,6 +49,15 @@ func (q *RedisQueue) PushCrawlJob(job CrawlJob) error {
 	return q.client.LPush(q.ctx, "crawl_queue", jobData).Err()
 }
 
+func (q *RedisQueue) PushTestJob(job map[string]interface{}) error {
+	jobData, err := json.Marshal(job)
+	if err != nil {
+		return err
+	}
+
+	return q.client.LPush(q.ctx, "test_queue", jobData).Err()
+}
+
 func (q *RedisQueue) Close() error {
 	return q.client.Close()
 }

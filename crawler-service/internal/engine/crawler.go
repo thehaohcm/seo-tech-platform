@@ -3,6 +3,8 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gocolly/colly/v2"
@@ -44,9 +46,9 @@ func NewCrawler(cfg *config.Config, logger *logger.Logger, queue *queue.RedisQue
 	}
 }
 
-func (c *Crawler) createCollector() *colly.Collector {
+func (c *Crawler) createCollector(allowedDomain string) *colly.Collector {
 	collector := colly.NewCollector(
-		colly.AllowedDomains(),
+		colly.AllowedDomains(allowedDomain),
 		colly.MaxDepth(3),
 		colly.Async(true),
 	)
@@ -75,11 +77,20 @@ func (c *Crawler) ProcessJob(jobData string) error {
 
 	c.logger.Infof("Processing crawl job for RunID: %d, URL: %s", job.RunID, job.StartURL)
 
+	// Extract domain from StartURL
+	parsedURL, err := url.Parse(job.StartURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse start URL: %w", err)
+	}
+	allowedDomain := parsedURL.Host
+
+	c.logger.Infof("Crawling only URLs from domain: %s", allowedDomain)
+
 	// Create a new collector for this job
-	collector := c.createCollector()
+	collector := c.createCollector(allowedDomain)
 
 	// Setup callbacks
-	c.setupCallbacks(collector, job.RunID)
+	c.setupCallbacks(collector, job.RunID, allowedDomain)
 
 	// Start crawling
 	if err := collector.Visit(job.StartURL); err != nil {
@@ -93,7 +104,7 @@ func (c *Crawler) ProcessJob(jobData string) error {
 	return nil
 }
 
-func (c *Crawler) setupCallbacks(collector *colly.Collector, runID int) {
+func (c *Crawler) setupCallbacks(collector *colly.Collector, runID int, allowedDomain string) {
 	// On HTML response
 	collector.OnHTML("html", func(e *colly.HTMLElement) {
 		pageData := c.extractPageData(e)
@@ -115,10 +126,10 @@ func (c *Crawler) setupCallbacks(collector *colly.Collector, runID int) {
 			c.logger.Infof("Extracted data from: %s", pageData.URL)
 		}
 
-		// Find and visit links
+		// Find and visit links (only from same domain)
 		e.ForEach("a[href]", func(_ int, link *colly.HTMLElement) {
 			href := link.Attr("href")
-			if href != "" {
+			if href != "" && c.isSameDomain(href, allowedDomain, e.Request.URL.String()) {
 				link.Request.Visit(href)
 			}
 		})
@@ -165,4 +176,31 @@ func (c *Crawler) extractPageData(e *colly.HTMLElement) *PageData {
 		H1Tags:      h1Tags,
 		Links:       links,
 	}
+}
+
+// isSameDomain checks if a URL belongs to the same domain as the allowed domain
+func (c *Crawler) isSameDomain(href string, allowedDomain string, baseURL string) bool {
+	// Parse the href
+	parsedHref, err := url.Parse(href)
+	if err != nil {
+		return false
+	}
+
+	// If it's a relative URL, it's same domain
+	if parsedHref.Host == "" {
+		return true
+	}
+
+	// If it's an absolute URL, check if host matches
+	// Remove www. prefix for comparison
+	hrefHost := strings.TrimPrefix(parsedHref.Host, "www.")
+	allowedHost := strings.TrimPrefix(allowedDomain, "www.")
+
+	isSame := hrefHost == allowedHost
+	
+	if !isSame {
+		c.logger.Debugf("Skipping external URL: %s (domain: %s, allowed: %s)", href, parsedHref.Host, allowedDomain)
+	}
+	
+	return isSame
 }

@@ -99,6 +99,14 @@ func main() {
 			audits.GET("/project/:project_id", apiHandler.ListAuditRuns)
 			audits.GET("/:id/pages", apiHandler.GetAuditPages)
 		}
+
+		// Page Tests
+		pages := v1.Group("/pages")
+		pages.Use(api.AuthMiddleware())
+		{
+			pages.POST("/:page_id/generate-test", apiHandler.GenerateAutoTest)
+			pages.GET("/:page_id/test-result", apiHandler.GetTestResult)
+		}
 	}
 
 	// Start server

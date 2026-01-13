@@ -139,6 +139,86 @@
               <p class="text-sm text-gray-700">{{ page.meta_description }}</p>
             </div>
 
+            <!-- Auto Test Section -->
+            <div class="border-t pt-4 mb-4">
+              <div class="flex items-center justify-between mb-3">
+                <h4 class="text-sm font-semibold text-gray-700">Automated Testing</h4>
+                <button
+                  @click="generateAutoTest(page)"
+                  :disabled="testStatus[page.id]?.loading"
+                  class="px-4 py-2 bg-purple-600 text-white text-sm rounded hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <svg v-if="testStatus[page.id]?.loading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {{ testStatus[page.id]?.loading ? 'Testing...' : 'Generate Auto Test' }}
+                </button>
+              </div>
+              
+              <!-- Test Results -->
+              <div v-if="testStatus[page.id]?.result" class="bg-gray-50 rounded-lg p-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <p class="text-xs text-gray-500">Test Status</p>
+                    <span
+                      :class="{
+                        'px-2 py-1 rounded text-xs font-medium inline-block': true,
+                        'bg-green-100 text-green-800': testStatus[page.id].result.status === 'passed',
+                        'bg-red-100 text-red-800': testStatus[page.id].result.status === 'failed',
+                        'bg-yellow-100 text-yellow-800': testStatus[page.id].result.status === 'warning'
+                      }"
+                    >
+                      {{ testStatus[page.id].result.status }}
+                    </span>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500">Tests Run</p>
+                    <p class="text-sm font-medium">{{ testStatus[page.id].result.total_tests }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500">Passed</p>
+                    <p class="text-sm font-medium text-green-600">{{ testStatus[page.id].result.passed }}</p>
+                  </div>
+                  <div>
+                    <p class="text-xs text-gray-500">Failed</p>
+                    <p class="text-sm font-medium text-red-600">{{ testStatus[page.id].result.failed }}</p>
+                  </div>
+                </div>
+
+                <!-- Screenshot -->
+                <div v-if="testStatus[page.id].result.screenshot_url" class="mt-4">
+                  <p class="text-xs text-gray-500 mb-2">Screenshot</p>
+                  <img 
+                    :src="testStatus[page.id].result.screenshot_url" 
+                    alt="Page Screenshot"
+                    class="w-full max-w-2xl border rounded cursor-pointer hover:shadow-lg transition"
+                    @click="openScreenshot(testStatus[page.id].result.screenshot_url)"
+                  />
+                </div>
+
+                <!-- Test Details -->
+                <div v-if="testStatus[page.id].result.test_details" class="mt-4">
+                  <p class="text-xs text-gray-500 mb-2">Test Details</p>
+                  <div class="space-y-2">
+                    <div
+                      v-for="(test, idx) in testStatus[page.id].result.test_details"
+                      :key="idx"
+                      class="flex items-start gap-2 text-sm"
+                    >
+                      <span v-if="test.passed" class="text-green-600">✓</span>
+                      <span v-else class="text-red-600">✗</span>
+                      <span>{{ test.name }}: {{ test.message }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else-if="testStatus[page.id]?.error" class="bg-red-50 p-4 rounded">
+                <p class="text-sm text-red-600">{{ testStatus[page.id].error }}</p>
+              </div>
+            </div>
+
             <!-- AI Suggestions -->
             <div v-if="page.ai_suggestions && !page.ai_suggestions.includes('Error')" class="bg-blue-50 p-4 rounded">
               <p class="text-xs text-blue-600 font-medium mb-2">AI Suggestions</p>
@@ -149,13 +229,32 @@
 
         <!-- Empty State -->
         <div v-else class="bg-white rounded-lg shadow p-12 text-center">
-          <p class="text-gray-500">No page audits found yet. The crawler is processing pages...</p>
-          <button
-            @click="fetchAuditData"
-            class="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Refresh
-          </button>
+          <div class="flex flex-col items-center">
+            <!-- Animated Spinner -->
+            <svg class="animate-spin h-12 w-12 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            
+            <!-- Progress Message -->
+            <p class="text-gray-700 font-medium mb-2">Processing Pages...</p>
+            <p class="text-gray-500 text-sm mb-6">The crawler is analyzing pages and will update results automatically</p>
+            
+            <!-- Animated Progress Bar -->
+            <div class="w-full max-w-xs h-2 bg-gray-200 rounded-full overflow-hidden mb-6">
+              <div class="h-full bg-blue-600 rounded-full animate-progress"></div>
+            </div>
+            
+            <button
+              @click="fetchAuditData"
+              class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition flex items-center gap-2"
+            >
+              <svg class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh Now
+            </button>
+          </div>
         </div>
       </div>
     </main>
@@ -171,7 +270,80 @@ const route = useRoute()
 const auditRun = ref(null)
 const pageAudits = ref([])
 const loading = ref(true)
+const testStatus = ref({})
 let pollingInterval = null
+
+const generateAutoTest = async (page) => {
+  const pageId = page.id
+  
+  // Set loading state
+  testStatus.value[pageId] = { loading: true, result: null, error: null }
+  
+  try {
+    const token = localStorage.getItem('token')
+    await axios.post(
+      `/api/v1/pages/${pageId}/generate-test`,
+      { url: page.url },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+    
+    // Poll for test results
+    const pollInterval = setInterval(async () => {
+      try {
+        const resultResponse = await axios.get(
+          `/api/v1/pages/${pageId}/test-result`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        
+        if (resultResponse.data) {
+          clearInterval(pollInterval)
+          testStatus.value[pageId] = {
+            loading: false,
+            result: resultResponse.data,
+            error: null
+          }
+        }
+      } catch (pollError) {
+        if (pollError.response?.status === 404) {
+          // Still processing, continue polling
+          return
+        }
+        
+        console.error('Error polling test results:', pollError)
+        clearInterval(pollInterval)
+        testStatus.value[pageId] = {
+          loading: false,
+          result: null,
+          error: 'Failed to retrieve test results'
+        }
+      }
+    }, 2000) // Poll every 2 seconds
+    
+    // Stop polling after 2 minutes
+    setTimeout(() => {
+      clearInterval(pollInterval)
+      if (testStatus.value[pageId]?.loading) {
+        testStatus.value[pageId] = {
+          loading: false,
+          result: null,
+          error: 'Test execution timeout'
+        }
+      }
+    }, 120000)
+    
+  } catch (error) {
+    console.error('Error generating auto test:', error)
+    testStatus.value[pageId] = {
+      loading: false,
+      result: null,
+      error: error.response?.data?.error || 'Failed to generate auto test'
+    }
+  }
+}
+
+const openScreenshot = (url) => {
+  window.open(url, '_blank')
+}
 
 const fetchAuditData = async () => {
   try {

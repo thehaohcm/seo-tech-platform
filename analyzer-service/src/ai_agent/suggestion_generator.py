@@ -2,9 +2,8 @@ import os
 import logging
 from typing import Dict, List
 from openai import OpenAI
-from langchain.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
-from langchain.chains import LLMChain
+from langchain.prompts import ChatPromptTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -50,12 +49,25 @@ class SuggestionGenerator:
                 url, lighthouse_results, accessibility_results, page_data
             )
             
-            # Create prompt
-            prompt = self._create_prompt(context)
+            # Create prompt and generate suggestions using new LangChain API
+            prompt = ChatPromptTemplate.from_template(
+                """You are an expert SEO and web performance consultant. Analyze the following website audit results and provide actionable, prioritized recommendations for improvement.
+
+{context}
+
+Please provide:
+1. **Priority Issues**: The top 3-5 most critical issues that should be fixed first
+2. **Quick Wins**: Easy fixes that can be implemented immediately
+3. **Technical Recommendations**: Specific code changes or configurations needed
+4. **Long-term Strategy**: Broader improvements for sustained optimization
+
+Format your response in Markdown with clear sections and bullet points. Be specific and provide code examples where applicable."""
+            )
             
-            # Generate suggestions
-            chain = LLMChain(llm=self.llm, prompt=prompt)
-            suggestions = chain.run(context=context)
+            # Generate suggestions using invoke instead of deprecated chain.run
+            chain = prompt | self.llm
+            response = chain.invoke({"context": context})
+            suggestions = response.content if hasattr(response, 'content') else str(response)
             
             logger.info(f"Generated AI suggestions for: {url}")
             return suggestions
@@ -110,26 +122,3 @@ class SuggestionGenerator:
                 context_parts.append(f"- {violation.get('description')} (Impact: {violation.get('impact')})")
         
         return "\n".join(context_parts)
-    
-    def _create_prompt(self, context: str) -> PromptTemplate:
-        """
-        Create the prompt template for AI generation
-        """
-        template = """
-You are an expert SEO and web performance consultant. Analyze the following website audit results and provide actionable, prioritized recommendations for improvement.
-
-{context}
-
-Please provide:
-1. **Priority Issues**: The top 3-5 most critical issues that should be fixed first
-2. **Quick Wins**: Easy fixes that can be implemented immediately
-3. **Technical Recommendations**: Specific code changes or configurations needed
-4. **Long-term Strategy**: Broader improvements for sustained optimization
-
-Format your response in Markdown with clear sections and bullet points. Be specific and provide code examples where applicable.
-"""
-        
-        return PromptTemplate(
-            input_variables=["context"],
-            template=template
-        )

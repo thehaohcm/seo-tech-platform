@@ -1,6 +1,6 @@
 import os
 import logging
-from sqlalchemy import create_engine, Column, Integer, String, Float, Text, TIMESTAMP, JSON, Boolean
+from sqlalchemy import create_engine, Column, Integer, String, Float, Text, TIMESTAMP, JSON, Boolean, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -63,6 +63,20 @@ class Database:
         self.engine = create_engine(connection_string)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
+    
+    def check_audit_run_exists(self, run_id: int) -> bool:
+        """
+        Check if audit run exists in database
+        """
+        try:
+            result = self.session.execute(
+                text("SELECT 1 FROM audit_runs WHERE id = :run_id"),
+                {"run_id": run_id}
+            )
+            return result.fetchone() is not None
+        except Exception as e:
+            logger.error(f"Error checking audit run existence: {str(e)}")
+            return False
     
     def save_page_audit(self, audit_data: dict):
         """

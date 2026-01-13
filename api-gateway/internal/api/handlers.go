@@ -1,10 +1,12 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"github.com/seo-tech-platform/api-gateway/internal/models"
 	"github.com/seo-tech-platform/api-gateway/internal/queue"
 	"github.com/seo-tech-platform/api-gateway/internal/service"
@@ -250,4 +252,64 @@ func (h *Handler) GetAuditPages(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"pages": pages})
+}
+
+// GenerateAutoTest generates automated tests for a specific page
+func (h *Handler) GenerateAutoTest(c *gin.Context) {
+	pageID := c.Param("page_id")
+
+	var page models.PageAudit
+	if err := h.db.First(&page, pageID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Page audit not found"})
+		return
+	}
+
+	// Push to test queue in Redis
+	testJob := map[string]interface{}{
+		"page_id": page.ID,
+		"url":     page.URL,
+		"run_id":  page.RunID,
+	}
+
+	if err := h.queue.PushTestJob(testJob); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to queue test job"})
+		return
+	}
+
+	// Return immediate response with test job status
+	c.JSON(http.StatusAccepted, gin.H{
+		"status":       "queued",
+		"message":      "Test generation started",
+		"page_id":      page.ID,
+		"total_tests":  0,
+		"passed":       0,
+		"failed":       0,
+		"test_details": []string{},
+	})
+}
+
+// GetTestResult retrieves test results from Redis
+func (h *Handler) GetTestResult(c *gin.Context) {
+	pageID := c.Param("page_id")
+	
+	resultKey := "test_result:" + pageID
+	
+	// Get test result from Redis
+	resultJSON, err := h.queue.Get(resultKey)
+	if err == redis.Nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Test results not found or expired"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve test results"})
+		return
+	}
+	
+	// Parse JSON result
+	var testResult map[string]interface{}
+	if err := json.Unmarshal([]byte(resultJSON), &testResult); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse test results"})
+		return
+	}
+	
+	c.JSON(http.StatusOK, testResult)
 }
