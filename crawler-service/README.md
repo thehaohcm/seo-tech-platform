@@ -29,6 +29,7 @@ go test ./...
 ## Configuration
 
 Set environment variables in `.env`:
+
 - `REDIS_URL`: Redis connection string
 - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`: Database configuration
 - `LOG_LEVEL`: Logging level (debug, info, warn, error)

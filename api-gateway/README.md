@@ -30,10 +30,12 @@ go test ./...
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/v1/auth/register` - Register new user
 - `POST /api/v1/auth/login` - Login
 
 ### Projects (Protected)
+
 - `GET /api/v1/projects` - List all projects
 - `POST /api/v1/projects` - Create project
 - `GET /api/v1/projects/:id` - Get project details
@@ -41,6 +43,7 @@ go test ./...
 - `DELETE /api/v1/projects/:id` - Delete project
 
 ### Audits (Protected)
+
 - `POST /api/v1/audits/start` - Start new audit
 - `GET /api/v1/audits/:id` - Get audit details
 - `GET /api/v1/audits/project/:project_id` - List audits for project
@@ -49,6 +52,7 @@ go test ./...
 ## Configuration
 
 Set environment variables:
+
 - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 - `REDIS_URL`
 - `JWT_SECRET`

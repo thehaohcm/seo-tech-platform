@@ -42,6 +42,7 @@ environment = "production"
 ## Outputs
 
 After applying, Terraform will output:
+
 - RDS endpoint
 - Redis endpoint
 - EKS cluster name

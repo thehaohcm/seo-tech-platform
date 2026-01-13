@@ -30,6 +30,7 @@ python src/main.py
 ## Configuration
 
 Set environment variables in `.env`:
+
 - `OPENAI_API_KEY`: OpenAI API key for AI suggestions
 - `REDIS_URL`: Redis connection string
 - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`: Database configuration

@@ -43,6 +43,7 @@ web-dashboard/
 ## Environment Variables
 
 Create a `.env` file:
+
 ```
 VITE_API_URL=http://localhost:8080
 ```
