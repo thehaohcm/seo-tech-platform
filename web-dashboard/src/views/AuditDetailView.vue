@@ -77,7 +77,19 @@
           >
             <div class="flex items-start justify-between mb-4">
               <div class="flex-1">
-                <h3 class="text-lg font-semibold text-gray-800 mb-2">{{ page.title || 'Untitled Page' }}</h3>
+                <div class="flex items-center gap-2 mb-2">
+                  <h3 class="text-lg font-semibold text-gray-800">{{ page.title || 'Untitled Page' }}</h3>
+                  <span
+                    :class="{
+                      'px-3 py-1 rounded-full text-sm font-bold': true,
+                      'bg-green-100 text-green-700': getSEOScore(page).rating === 'Good',
+                      'bg-yellow-100 text-yellow-700': getSEOScore(page).rating === 'Average',
+                      'bg-red-100 text-red-700': getSEOScore(page).rating === 'Poor'
+                    }"
+                  >
+                    {{ getSEOScore(page).rating }}
+                  </span>
+                </div>
                 <a
                   :href="page.url"
                   target="_blank"
@@ -215,6 +227,41 @@ const formatTime = (dateString) => {
 const formatScore = (score) => {
   if (!score && score !== 0) return 'N/A'
   return typeof score === 'number' ? score.toFixed(2) : score
+}
+
+const getSEOScore = (page) => {
+  // Score thresholds based on Core Web Vitals
+  const lcpScore = page.lcp_score || 0
+  const fcpScore = page.fcp_score || 0
+  const clsScore = page.cls_score || 0
+  
+  let goodCount = 0
+  let poorCount = 0
+  
+  // LCP (Largest Contentful Paint): < 2.5s = good, 2.5-4s = average, > 4s = poor
+  if (lcpScore < 2.5) goodCount++
+  else if (lcpScore > 4) poorCount++
+  
+  // FCP (First Contentful Paint): < 1.8s = good, 1.8-3s = average, > 3s = poor
+  if (fcpScore < 1.8) goodCount++
+  else if (fcpScore > 3) poorCount++
+  
+  // CLS (Cumulative Layout Shift): < 0.1 = good, 0.1-0.25 = average, > 0.25 = poor
+  if (clsScore < 0.1) goodCount++
+  else if (clsScore > 0.25) poorCount++
+  
+  // Check for SEO issues
+  const hasSEOIssues = page.seo_issues?.items?.length > 0 || false
+  if (hasSEOIssues) poorCount++
+  
+  // Determine overall rating
+  if (poorCount >= 2) {
+    return { rating: 'Poor', score: 0 }
+  } else if (goodCount >= 2) {
+    return { rating: 'Good', score: 100 }
+  } else {
+    return { rating: 'Average', score: 50 }
+  }
 }
 
 onMounted(() => {
