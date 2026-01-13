@@ -16,6 +16,11 @@ services:
       - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - seo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seouser -d seo_platform"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # Redis for Queue Management
   redis:
@@ -84,13 +89,19 @@ services:
       - REDIS_URL=redis:6379
       - CRAWLER_SERVICE_URL=http://crawler-service:8081
       - ANALYZER_SERVICE_URL=http://analyzer-service:8082
+      - JWT_SECRET=${JWT_SECRET}
     ports:
       - "8080:8080"
     depends_on:
-      - postgres
-      - redis
-      - crawler-service
-      - analyzer-service
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      crawler-service:
+        condition: service_started
+      analyzer-service:
+        condition: service_started
+    restart: unless-stopped
     networks:
       - seo-network
 

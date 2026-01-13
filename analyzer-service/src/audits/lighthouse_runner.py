@@ -32,7 +32,7 @@ class LighthouseRunner:
                 url,
                 "--output=json",
                 "--output-path=stdout",
-                "--chrome-flags=--headless",
+                "--chrome-flags=--headless --no-sandbox --disable-dev-shm-usage --disable-gpu",
                 "--quiet"
             ]
             
@@ -72,17 +72,17 @@ class LighthouseRunner:
         
         return {
             # Core Web Vitals
-            'lcp': audits.get('largest-contentful-paint', {}).get('numericValue', 0) / 1000,
-            'fid': audits.get('max-potential-fid', {}).get('numericValue', 0),
-            'cls': audits.get('cumulative-layout-shift', {}).get('numericValue', 0),
-            'fcp': audits.get('first-contentful-paint', {}).get('numericValue', 0) / 1000,
-            'ttfb': audits.get('server-response-time', {}).get('numericValue', 0),
+            'lcp': audits.get('largest-contentful-paint', {}).get('numericValue', 0) / 1000 if audits.get('largest-contentful-paint', {}).get('numericValue') else 0,
+            'fid': audits.get('max-potential-fid', {}).get('numericValue', 0) or 0,
+            'cls': audits.get('cumulative-layout-shift', {}).get('numericValue', 0) or 0,
+            'fcp': audits.get('first-contentful-paint', {}).get('numericValue', 0) / 1000 if audits.get('first-contentful-paint', {}).get('numericValue') else 0,
+            'ttfb': audits.get('server-response-time', {}).get('numericValue', 0) or 0,
             
             # Scores
-            'performance_score': categories.get('performance', {}).get('score', 0) * 100,
-            'seo_score': categories.get('seo', {}).get('score', 0) * 100,
-            'accessibility_score': categories.get('accessibility', {}).get('score', 0) * 100,
-            'best_practices_score': categories.get('best-practices', {}).get('score', 0) * 100,
+            'performance_score': (categories.get('performance', {}).get('score') or 0) * 100,
+            'seo_score': (categories.get('seo', {}).get('score') or 0) * 100,
+            'accessibility_score': (categories.get('accessibility', {}).get('score') or 0) * 100,
+            'best_practices_score': (categories.get('best-practices', {}).get('score') or 0) * 100,
             
             # SEO Issues
             'seo_issues': self._extract_seo_issues(audits),
@@ -107,12 +107,13 @@ class LighthouseRunner:
         
         for audit_id in seo_audits:
             audit = audits.get(audit_id, {})
-            if audit.get('score', 1) < 1:
+            score = audit.get('score')
+            if score is not None and score < 1:
                 issues.append({
                     'type': audit_id,
                     'title': audit.get('title', ''),
                     'description': audit.get('description', ''),
-                    'score': audit.get('score', 0)
+                    'score': score
                 })
         
         return issues
@@ -134,7 +135,8 @@ class LighthouseRunner:
         
         for audit_id in performance_audits:
             audit = audits.get(audit_id, {})
-            if audit.get('score', 1) < 1:
+            score = audit.get('score')
+            if score is not None and score < 1:
                 issues.append({
                     'type': audit_id,
                     'title': audit.get('title', ''),

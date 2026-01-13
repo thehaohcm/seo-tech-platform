@@ -55,8 +55,18 @@ def process_page_audit(page_data: dict):
             'lcp_score': lighthouse_results.get('lcp'),
             'fid_score': lighthouse_results.get('fid'),
             'cls_score': lighthouse_results.get('cls'),
-            'seo_issues': json.dumps(lighthouse_results.get('seo_issues', [])),
-            'accessibility_issues': json.dumps(accessibility_results.get('violations', [])),
+            'fcp_score': lighthouse_results.get('fcp'),
+            'ttfb_score': lighthouse_results.get('ttfb'),
+            'status_code': lighthouse_results.get('status_code', 200),
+            'load_time_ms': lighthouse_results.get('load_time_ms', 0),
+            'title': page_data.get('title', ''),
+            'meta_description': page_data.get('meta_description', ''),
+            'h1_tags': page_data.get('h1_tags', []),
+            'canonical_url': page_data.get('canonical_url', ''),
+            'has_robots_meta': bool(page_data.get('has_robots_meta', False)),
+            'seo_issues': lighthouse_results.get('seo_issues', []),
+            'accessibility_issues': accessibility_results.get('violations', []),
+            'performance_issues': lighthouse_results.get('performance_issues', []),
             'ai_suggestions': ai_suggestions
         })
         

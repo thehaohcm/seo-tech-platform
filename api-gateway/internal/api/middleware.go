@@ -29,9 +29,15 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		tokenString := parts[1]
 
+		// Get JWT secret
+		secret := os.Getenv("JWT_SECRET")
+		if secret == "" {
+			secret = "your-secret-key-change-this"
+		}
+
 		// Parse and validate token
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return []byte(os.Getenv("JWT_SECRET")), nil
+			return []byte(secret), nil
 		})
 
 		if err != nil || !token.Valid {

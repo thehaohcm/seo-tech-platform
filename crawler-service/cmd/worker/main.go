@@ -31,7 +31,7 @@ func main() {
 	defer queueClient.Close()
 
 	// Initialize crawler engine
-	crawler := engine.NewCrawler(cfg, logger)
+	crawler := engine.NewCrawler(cfg, logger, queueClient)
 
 	// Start listening for crawl jobs
 	logger.Info("Worker is ready and listening for jobs...")

@@ -2,11 +2,13 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/seo-tech-platform/api-gateway/internal/api"
 	"github.com/seo-tech-platform/api-gateway/internal/models"
+	"github.com/seo-tech-platform/api-gateway/internal/queue"
 )
 
 func main() {
@@ -26,6 +28,24 @@ func main() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
+	// Initialize Redis queue
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "redis://localhost:6379"
+	}
+	// Ensure redis:// prefix
+	if len(redisURL) < 8 || redisURL[0:8] != "redis://" {
+		redisURL = "redis://" + redisURL
+	}
+
+	redisQueue, err := queue.NewRedisQueue(redisURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+	defer redisQueue.Close()
+
+	log.Println("Connected to Redis successfully")
+
 	// Setup Gin router
 	router := gin.Default()
 
@@ -42,7 +62,7 @@ func main() {
 	})
 
 	// Initialize API handlers
-	apiHandler := api.NewHandler(db)
+	apiHandler := api.NewHandler(db, redisQueue)
 
 	// Health check
 	router.GET("/health", func(c *gin.Context) {

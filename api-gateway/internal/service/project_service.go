@@ -23,7 +23,7 @@ func (s *ProjectService) ListProjects(userID int) ([]models.Project, error) {
 }
 
 // CreateProject creates a new project
-func (s *ProjectService) CreateProject(userID int, domain, name string, settings map[string]interface{}) (*models.Project, error) {
+func (s *ProjectService) CreateProject(userID int, domain, name string, settings models.JSONB) (*models.Project, error) {
 	project := models.Project{
 		UserID:   userID,
 		Domain:   domain,
@@ -48,7 +48,7 @@ func (s *ProjectService) GetProject(id string) (*models.Project, error) {
 }
 
 // UpdateProject updates a project
-func (s *ProjectService) UpdateProject(id, domain, name string, settings map[string]interface{}) (*models.Project, error) {
+func (s *ProjectService) UpdateProject(id, domain, name string, settings models.JSONB) (*models.Project, error) {
 	var project models.Project
 	if err := s.db.First(&project, id).Error; err != nil {
 		return nil, err

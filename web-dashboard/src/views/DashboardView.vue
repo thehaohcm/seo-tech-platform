@@ -44,9 +44,25 @@
             <h3 class="text-lg font-medium text-gray-800">Recent Projects</h3>
           </div>
           <div class="p-6">
-            <p class="text-gray-500 text-center py-8">
+            <div v-if="projectStore.projects.length === 0" class="text-gray-500 text-center py-8">
               No recent projects. <router-link to="/projects" class="text-blue-600 hover:text-blue-700">Create your first project</router-link>
-            </p>
+            </div>
+            <div v-else class="space-y-4">
+              <div
+                v-for="project in projectStore.projects.slice(0, 5)"
+                :key="project.id"
+                class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
+                @click="router.push(`/projects/${project.id}`)"
+              >
+                <div>
+                  <h4 class="text-lg font-medium text-gray-800">{{ project.name }}</h4>
+                  <p class="text-sm text-gray-500">{{ project.domain }}</p>
+                </div>
+                <div class="text-sm text-gray-400">
+                  {{ new Date(project.created_at).toLocaleDateString() }}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

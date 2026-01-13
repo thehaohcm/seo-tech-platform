@@ -1,6 +1,6 @@
 import os
 import logging
-from sqlalchemy import create_engine, Column, Integer, String, Float, Text, TIMESTAMP, JSON
+from sqlalchemy import create_engine, Column, Integer, String, Float, Text, TIMESTAMP, JSON, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -31,7 +31,7 @@ class PageAudit(Base):
     meta_description = Column(Text)
     h1_tags = Column(JSON)
     canonical_url = Column(Text)
-    has_robots_meta = Column(Integer)
+    has_robots_meta = Column(Boolean)
     
     # Issues
     seo_issues = Column(JSON)

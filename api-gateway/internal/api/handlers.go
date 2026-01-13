@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/seo-tech-platform/api-gateway/internal/models"
+	"github.com/seo-tech-platform/api-gateway/internal/queue"
 	"github.com/seo-tech-platform/api-gateway/internal/service"
 	"gorm.io/gorm"
 )
@@ -14,13 +15,15 @@ type Handler struct {
 	db          *gorm.DB
 	service     *service.ProjectService
 	authService *service.AuthService
+	queue       *queue.RedisQueue
 }
 
-func NewHandler(db *gorm.DB) *Handler {
+func NewHandler(db *gorm.DB, redisQueue *queue.RedisQueue) *Handler {
 	return &Handler{
 		db:          db,
 		service:     service.NewProjectService(db),
 		authService: service.NewAuthService(db),
+		queue:       redisQueue,
 	}
 }
 
@@ -89,9 +92,9 @@ func (h *Handler) ListProjects(c *gin.Context) {
 // CreateProject creates a new project
 func (h *Handler) CreateProject(c *gin.Context) {
 	var req struct {
-		Domain   string                 `json:"domain" binding:"required"`
-		Name     string                 `json:"name" binding:"required"`
-		Settings map[string]interface{} `json:"settings"`
+		Domain   string       `json:"domain" binding:"required"`
+		Name     string       `json:"name" binding:"required"`
+		Settings models.JSONB `json:"settings"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -128,9 +131,9 @@ func (h *Handler) UpdateProject(c *gin.Context) {
 	id := c.Param("id")
 
 	var req struct {
-		Domain   string                 `json:"domain"`
-		Name     string                 `json:"name"`
-		Settings map[string]interface{} `json:"settings"`
+		Domain   string       `json:"domain"`
+		Name     string       `json:"name"`
+		Settings models.JSONB `json:"settings"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -170,6 +173,13 @@ func (h *Handler) StartAudit(c *gin.Context) {
 		return
 	}
 
+	// Get project details
+	var project models.Project
+	if err := h.db.First(&project, req.ProjectID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+
 	// Create audit run
 	auditRun := models.AuditRun{
 		ProjectID: req.ProjectID,
@@ -182,7 +192,23 @@ func (h *Handler) StartAudit(c *gin.Context) {
 		return
 	}
 
-	// TODO: Push job to crawler queue
+	// Push job to crawler queue
+	crawlJob := queue.CrawlJob{
+		RunID:     auditRun.ID,
+		ProjectID: project.ID,
+		StartURL:  project.Domain,
+		MaxPages:  100, // Default max pages
+	}
+
+	if err := h.queue.PushCrawlJob(crawlJob); err != nil {
+		// Update audit run status to failed
+		auditRun.Status = "failed"
+		auditRun.ErrorMessage = "Failed to queue crawl job: " + err.Error()
+		h.db.Save(&auditRun)
+		
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to queue crawl job"})
+		return
+	}
 
 	c.JSON(http.StatusCreated, gin.H{"audit_run": auditRun})
 }
