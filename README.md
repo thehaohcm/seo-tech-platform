@@ -1,24 +1,53 @@
 # SEO Tech Platform
 
-An AI-powered technical SEO and QA platform that analyzes websites, generates actionable SEO improvements, automation tests, and visual reports — designed for developers and engineering teams.
+An AI-powered technical SEO and QA platform that analyzes websites, generates actionable SEO improvements, automation tests with Selenium, and visual reports — designed for developers and engineering teams.
 
 ## 🏗️ Architecture
 
-- **crawler-service** (Golang): High-performance web crawler using Colly
-- **analyzer-service** (Python): AI-powered analysis using Lighthouse, Axe-core, and LangChain
-- **api-gateway** (Golang): REST API backend and business logic
-- **web-dashboard** (Vue.js): User interface for visualization and reporting
+- **crawler-service** (Go 1.23): High-performance web crawler using Colly with domain filtering
+- **analyzer-service** (Python 3.11): AI-powered analysis with Lighthouse, Selenium, and LangChain
+- **api-gateway** (Go 1.23): REST API backend with JWT authentication
+- **web-dashboard** (Vue.js 3): Real-time dashboard with Composition API and Tailwind CSS
+
+## 🛠️ Tech Stack
+
+### Backend
+- **Go 1.23** - API Gateway & Crawler Service
+  - Gin Web Framework
+  - GORM (PostgreSQL ORM)
+  - Colly (Web Scraping)
+  - JWT Authentication
+  
+- **Python 3.11** - Analyzer Service
+  - Selenium WebDriver (Automated Testing)
+  - LangChain + OpenAI GPT-4 (AI Suggestions)
+  - Lighthouse CI (Performance Audits)
+  - SQLAlchemy (Database ORM)
+
+### Frontend
+- **Vue.js 3** with Composition API
+- **Pinia** - State Management
+- **Tailwind CSS** - Styling
+- **Vite** - Build Tool
+- **Axios** - HTTP Client
+
+### Infrastructure
+- **PostgreSQL 15** - Primary Database with JSONB support
+- **Redis 7** - Queue Management (crawl_queue, analysis_queue, test_queue)
+- **Docker & Docker Compose** - Containerization
+- **Nginx** - Reverse Proxy
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
 - Docker & Docker Compose
-- Go 1.21+
+- Go 1.23+
 - Python 3.11+
 - Node.js 18+
 - PostgreSQL 15+
 - Redis 7+
+- OpenAI API Key (for AI suggestions)
 
 ### Local Development
 
@@ -27,37 +56,55 @@ An AI-powered technical SEO and QA platform that analyzes websites, generates ac
 docker-compose up -d
 
 # Access the dashboard
-open http://localhost:3000
+open http://localhost:8080
 
-# API documentation
-open http://localhost:8080/swagger
+# Check service health
+docker ps
+
+# View logs
+docker logs -f seo-api
+docker logs -f seo-analyzer
+docker logs -f seo-crawler
 ```
 
 ## 📦 Services
 
-### Crawler Service (Port 8081)
+### Crawler Service
 
-- High-performance web crawling
-- Headless browser support
-- Queue-based job processing
+- High-performance web crawling with Colly
+- Domain filtering (only crawls same-domain URLs)
+- Redis queue-based job processing
+- Parallel crawling with rate limiting
+- Extracts: titles, meta descriptions, H1 tags, links, status codes
 
-### Analyzer Service (Port 8082)
+### Analyzer Service
 
-- Lighthouse CI integration
-- AI-powered suggestions
-- Core Web Vitals analysis
+- **Lighthouse CI** - Performance, SEO, Accessibility audits
+- **Selenium WebDriver** - Automated testing with Chrome headless
+  - 8 automated test types (page load, title, meta, H1, images, forms, links, console errors)
+  - Screenshot capture (base64 format)
+- **LangChain + GPT-4** - AI-powered SEO improvement suggestions
+- **Redis Results Storage** - Test results with 1-hour expiry
+- Processes jobs from analysis_queue and test_queue
 
 ### API Gateway (Port 8080)
 
-- RESTful API
+- RESTful API with Gin framework
+- JWT Authentication & Authorization
 - User & Project management
-- Database operations
+- CRUD operations for audits and pages
+- Redis integration for queue management
+- PostgreSQL with JSONB support
 
-### Web Dashboard (Port 3000)
+### Web Dashboard (Port 8080)
 
-- Real-time analytics
-- Interactive reports
-- Project management UI
+- Real-time audit results with auto-polling (2-3 second intervals)
+- SEO rating badges (Good/Average/Poor)
+- Animated loading states with progress indicators
+- Per-page automated testing with "Generate Auto Test" button
+- Screenshot viewer for test results
+- Project management (create, delete projects)
+- Interactive reports with detailed metrics
 
 ## 🗄️ Database Schema
 
@@ -101,10 +148,23 @@ npm run dev
 
 Copy `.env.example` to `.env` and configure:
 
-- Database credentials
-- Redis connection
-- OpenAI API key
-- AWS credentials (for S3)
+```bash
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/seo_platform
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# OpenAI API (for AI suggestions)
+OPENAI_API_KEY=sk-...
+
+# JWT Secret
+JWT_SECRET=your-secret-key
+
+# Ports
+API_PORT=8080
+DASHBOARD_PORT=8080
+```
 
 ## 🚢 Deployment
 
@@ -121,13 +181,32 @@ kubectl apply -f .
 
 ## 📊 Features
 
-- ✅ Website crawling and analysis
-- ✅ Core Web Vitals monitoring
-- ✅ AI-powered SEO suggestions
-- ✅ Lighthouse CI integration
-- ✅ Automated testing
-- ✅ Visual reporting
-- ✅ Multi-project support
+### Core Features
+- ✅ **Smart Web Crawling** - Domain-filtered crawling with same-origin policy
+- ✅ **Lighthouse Audits** - Performance, SEO, Accessibility, Best Practices
+- ✅ **AI-Powered Suggestions** - GPT-4 generates actionable SEO improvements
+- ✅ **Automated Testing** - Selenium-based tests for each page
+  - Page load validation
+  - Title & meta description checks
+  - H1 tag analysis
+  - Image alt text validation
+  - Form label accessibility
+  - Link validity checks
+  - Console error detection
+- ✅ **Screenshot Capture** - Visual page snapshots during testing
+- ✅ **Real-time Updates** - Auto-polling dashboard with live results
+- ✅ **SEO Ratings** - Good/Average/Poor badges based on scores
+- ✅ **Multi-project Support** - Manage multiple websites
+- ✅ **Project Management** - Create, view, delete projects
+
+### Technical Features
+- 🔐 **JWT Authentication** - Secure user sessions
+- 📊 **JSONB Storage** - Flexible schema for audit data
+- 🚀 **Redis Queues** - Distributed job processing
+- 📸 **Base64 Screenshots** - Embedded image storage
+- ⏱️ **Rate Limiting** - Controlled crawling speed
+- 🎯 **Domain Filtering** - Prevents external URL crawling
+- 💾 **Result Caching** - 1-hour Redis expiry for test results
 
 ## 🤝 Contributing
 
