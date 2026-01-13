@@ -205,7 +205,7 @@ func (h *Handler) StartAudit(c *gin.Context) {
 		auditRun.Status = "failed"
 		auditRun.ErrorMessage = "Failed to queue crawl job: " + err.Error()
 		h.db.Save(&auditRun)
-		
+
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to queue crawl job"})
 		return
 	}

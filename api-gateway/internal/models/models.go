@@ -28,17 +28,17 @@ func (j *JSONB) Scan(value interface{}) error {
 		*j = nil
 		return nil
 	}
-	
+
 	bytes, ok := value.([]byte)
 	if !ok {
 		return fmt.Errorf("failed to unmarshal JSONB value: %v", value)
 	}
-	
+
 	var result interface{}
 	if err := json.Unmarshal(bytes, &result); err != nil {
 		return err
 	}
-	
+
 	// Convert to map[string]interface{} if it's a map, otherwise keep as is (array, etc)
 	switch v := result.(type) {
 	case map[string]interface{}:
@@ -49,7 +49,7 @@ func (j *JSONB) Scan(value interface{}) error {
 	default:
 		*j = map[string]interface{}{"value": v}
 	}
-	
+
 	return nil
 }
 
@@ -70,17 +70,17 @@ func (s *StringArray) Scan(value interface{}) error {
 		*s = nil
 		return nil
 	}
-	
+
 	bytes, ok := value.([]byte)
 	if !ok {
 		return fmt.Errorf("failed to unmarshal StringArray value: %v", value)
 	}
-	
+
 	var result []string
 	if err := json.Unmarshal(bytes, &result); err != nil {
 		return err
 	}
-	
+
 	*s = result
 	return nil
 }
@@ -157,7 +157,7 @@ func InitDB() (*gorm.DB, error) {
 
 	var db *gorm.DB
 	var err error
-	
+
 	// Retry connection up to 30 times with 2 second delay
 	maxRetries := 30
 	for i := 0; i < maxRetries; i++ {
@@ -172,7 +172,7 @@ func InitDB() (*gorm.DB, error) {
 				}
 			}
 		}
-		
+
 		fmt.Printf("Failed to connect to database (attempt %d/%d): %v\n", i+1, maxRetries, err)
 		time.Sleep(2 * time.Second)
 	}

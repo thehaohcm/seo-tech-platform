@@ -25,15 +25,15 @@ type CrawlJob struct {
 }
 
 type PageData struct {
-	URL          string            `json:"url"`
-	StatusCode   int               `json:"status_code"`
-	Title        string            `json:"title"`
-	Description  string            `json:"description"`
-	H1Tags       []string          `json:"h1_tags"`
-	Links        []string          `json:"links"`
-	LoadTime     int64             `json:"load_time_ms"`
-	HTMLSnapshot string            `json:"html_snapshot"`
-	Timestamp    time.Time         `json:"timestamp"`
+	URL          string    `json:"url"`
+	StatusCode   int       `json:"status_code"`
+	Title        string    `json:"title"`
+	Description  string    `json:"description"`
+	H1Tags       []string  `json:"h1_tags"`
+	Links        []string  `json:"links"`
+	LoadTime     int64     `json:"load_time_ms"`
+	HTMLSnapshot string    `json:"html_snapshot"`
+	Timestamp    time.Time `json:"timestamp"`
 }
 
 func NewCrawler(cfg *config.Config, logger *logger.Logger, queue *queue.RedisQueue) *Crawler {
