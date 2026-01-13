@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: seo-postgres
+    environment:
+      POSTGRES_DB: seo_platform
+      POSTGRES_USER: seouser
+      POSTGRES_PASSWORD: seopass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - seo-network
+
+  # Redis for Queue Management
+  redis:
+    image: redis:7-alpine
+    container_name: seo-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - seo-network
+
+  # Crawler Service (Golang)
+  crawler-service:
+    build:
+      context: ./crawler-service
+      dockerfile: Dockerfile
+    container_name: seo-crawler
+    environment:
+      - REDIS_URL=redis:6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=seo_platform
+      - DB_USER=seouser
+      - DB_PASSWORD=seopass
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - seo-network
+
+  # Analyzer Service (Python)
+  analyzer-service:
+    build:
+      context: ./analyzer-service
+      dockerfile: Dockerfile
+    container_name: seo-analyzer
+    environment:
+      - REDIS_URL=redis:6379
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=seo_platform
+      - DB_USER=seouser
+      - DB_PASSWORD=seopass
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "8082:8082"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - seo-network
+
+  # API Gateway (Golang)
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: seo-api
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=seo_platform
+      - DB_USER=seouser
+      - DB_PASSWORD=seopass
+      - REDIS_URL=redis:6379
+      - CRAWLER_SERVICE_URL=http://crawler-service:8081
+      - ANALYZER_SERVICE_URL=http://analyzer-service:8082
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+      - crawler-service
+      - analyzer-service
+    networks:
+      - seo-network
+
+  # Web Dashboard (Vue.js)
+  web-dashboard:
+    build:
+      context: ./web-dashboard
+      dockerfile: Dockerfile
+    container_name: seo-dashboard
+    environment:
+      - VITE_API_URL=http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+    networks:
+      - seo-network
+
+volumes:
+  postgres_data:
+
+networks:
+  seo-network:
+    driver: bridge

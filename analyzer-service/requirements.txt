@@ -1,0 +1,26 @@
+# Python dependencies
+fastapi==0.104.1
+uvicorn==0.24.0
+redis==5.0.1
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+pydantic==2.5.0
+python-dotenv==1.0.0
+
+# AI and Analysis
+openai>=1.6.1
+langchain==0.0.340
+langchain-openai==0.0.2
+
+# Web scraping and analysis
+beautifulsoup4==4.12.2
+lxml==4.9.3
+requests==2.31.0
+
+# Lighthouse and auditing
+# Note: Lighthouse requires Node.js - will use subprocess
+selenium==4.15.2
+axe-selenium-python==2.1.6
+
+# Utilities
+python-json-logger==2.0.7
