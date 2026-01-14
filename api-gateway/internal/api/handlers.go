@@ -215,6 +215,58 @@ func (h *Handler) StartAudit(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"audit_run": auditRun})
 }
 
+// StartSingleUrlAudit initiates an audit for a specific URL only
+func (h *Handler) StartSingleUrlAudit(c *gin.Context) {
+	var req struct {
+		ProjectID int    `json:"project_id" binding:"required"`
+		URL       string `json:"url" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Get project details
+	var project models.Project
+	if err := h.db.First(&project, req.ProjectID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Project not found"})
+		return
+	}
+
+	// Create audit run
+	auditRun := models.AuditRun{
+		ProjectID: req.ProjectID,
+		Status:    "queued",
+		StartedAt: time.Now(),
+	}
+
+	if err := h.db.Create(&auditRun).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Push job to crawler queue with single URL (MaxPages = 1 means only this URL)
+	crawlJob := queue.CrawlJob{
+		RunID:     auditRun.ID,
+		ProjectID: project.ID,
+		StartURL:  req.URL,
+		MaxPages:  1, // Only crawl the specified URL
+	}
+
+	if err := h.queue.PushCrawlJob(crawlJob); err != nil {
+		// Update audit run status to failed
+		auditRun.Status = "failed"
+		auditRun.ErrorMessage = "Failed to queue crawl job: " + err.Error()
+		h.db.Save(&auditRun)
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to queue crawl job"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"audit_run": auditRun})
+}
+
 // GetAuditRun returns details of an audit run
 func (h *Handler) GetAuditRun(c *gin.Context) {
 	id := c.Param("id")

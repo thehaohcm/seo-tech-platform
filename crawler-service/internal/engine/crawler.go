@@ -75,7 +75,7 @@ func (c *Crawler) ProcessJob(jobData string) error {
 		return fmt.Errorf("failed to parse job data: %w", err)
 	}
 
-	c.logger.Infof("Processing crawl job for RunID: %d, URL: %s", job.RunID, job.StartURL)
+	c.logger.Infof("Processing crawl job for RunID: %d, URL: %s, MaxPages: %d", job.RunID, job.StartURL, job.MaxPages)
 
 	// Extract domain from StartURL
 	parsedURL, err := url.Parse(job.StartURL)
@@ -84,13 +84,17 @@ func (c *Crawler) ProcessJob(jobData string) error {
 	}
 	allowedDomain := parsedURL.Host
 
-	c.logger.Infof("Crawling only URLs from domain: %s", allowedDomain)
+	if job.MaxPages == 1 {
+		c.logger.Infof("Single URL mode: Only auditing %s", job.StartURL)
+	} else {
+		c.logger.Infof("Crawling mode: Crawling URLs from domain: %s", allowedDomain)
+	}
 
 	// Create a new collector for this job
 	collector := c.createCollector(allowedDomain)
 
-	// Setup callbacks
-	c.setupCallbacks(collector, job.RunID, allowedDomain)
+	// Setup callbacks with MaxPages parameter
+	c.setupCallbacks(collector, job.RunID, allowedDomain, job.MaxPages)
 
 	// Start crawling
 	if err := collector.Visit(job.StartURL); err != nil {
@@ -104,7 +108,7 @@ func (c *Crawler) ProcessJob(jobData string) error {
 	return nil
 }
 
-func (c *Crawler) setupCallbacks(collector *colly.Collector, runID int, allowedDomain string) {
+func (c *Crawler) setupCallbacks(collector *colly.Collector, runID int, allowedDomain string, maxPages int) {
 	// On HTML response
 	collector.OnHTML("html", func(e *colly.HTMLElement) {
 		pageData := c.extractPageData(e)
@@ -126,13 +130,18 @@ func (c *Crawler) setupCallbacks(collector *colly.Collector, runID int, allowedD
 			c.logger.Infof("Extracted data from: %s", pageData.URL)
 		}
 
-		// Find and visit links (only from same domain)
-		e.ForEach("a[href]", func(_ int, link *colly.HTMLElement) {
-			href := link.Attr("href")
-			if href != "" && c.isSameDomain(href, allowedDomain, e.Request.URL.String()) {
-				link.Request.Visit(href)
-			}
-		})
+		// Only follow links if MaxPages > 1 (full crawl mode)
+		if maxPages > 1 {
+			// Find and visit links (only from same domain)
+			e.ForEach("a[href]", func(_ int, link *colly.HTMLElement) {
+				href := link.Attr("href")
+				if href != "" && c.isSameDomain(href, allowedDomain, e.Request.URL.String()) {
+					link.Request.Visit(href)
+				}
+			})
+		} else {
+			c.logger.Debugf("Single URL mode: Skipping link extraction")
+		}
 	})
 
 	// On request

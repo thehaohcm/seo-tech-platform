@@ -18,6 +18,17 @@
 
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div class="px-4 py-6 sm:px-0">
+        <!-- Back Button -->
+        <button
+          @click="goBack"
+          class="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+          </svg>
+          <span class="font-medium">Back</span>
+        </button>
+        
         <div v-if="loading" class="text-center py-12">
           <p class="text-gray-500">Loading project...</p>
         </div>
@@ -43,9 +54,30 @@
                   @click="handleStartAudit"
                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
                 >
-                  Start Audit
+                  Start Full Audit
                 </button>
               </div>
+            </div>
+            
+            <!-- Single URL Audit Section -->
+            <div class="mt-6 pt-6 border-t border-gray-200">
+              <h3 class="text-sm font-medium text-gray-700 mb-3">Audit Specific URL</h3>
+              <div class="flex gap-3">
+                <input
+                  v-model="singleUrl"
+                  type="url"
+                  placeholder="https://example.com/specific-page"
+                  class="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <button
+                  @click="handleSingleUrlAudit"
+                  :disabled="!singleUrl || auditingSingle"
+                  class="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-6 py-2 rounded-md transition"
+                >
+                  {{ auditingSingle ? 'Auditing...' : 'Audit URL' }}
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-2">Enter a specific URL to audit just that page instead of crawling the entire site.</p>
             </div>
           </div>
 
@@ -54,7 +86,41 @@
               <h2 class="text-lg font-medium text-gray-800">Audit History</h2>
             </div>
             <div class="p-6">
-              <p class="text-gray-500 text-center py-8">No audits yet</p>
+              <!-- Loading State -->
+              <div v-if="loadingAudits" class="text-center py-8">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                <p class="text-gray-500 text-sm">Loading audits...</p>
+              </div>
+              
+              <!-- Audit List -->
+              <div v-else-if="auditRuns.length > 0" class="space-y-3">
+                <div
+                  v-for="audit in auditRuns"
+                  :key="audit.id"
+                  class="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition cursor-pointer"
+                  @click="viewAudit(audit.id)"
+                >
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="font-medium text-gray-800">Audit #{{ audit.id }}</p>
+                      <p class="text-sm text-gray-500">{{ formatDate(audit.started_at) }}</p>
+                    </div>
+                    <span
+                      :class="{
+                        'px-3 py-1 rounded-full text-sm font-medium': true,
+                        'bg-yellow-100 text-yellow-800': audit.status === 'queued' || audit.status === 'running',
+                        'bg-green-100 text-green-800': audit.status === 'completed',
+                        'bg-red-100 text-red-800': audit.status === 'failed'
+                      }"
+                    >
+                      {{ audit.status }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Empty State -->
+              <p v-else class="text-gray-500 text-center py-8">No audits yet</p>
             </div>
           </div>
         </div>
@@ -120,10 +186,51 @@ const project = ref(null)
 const loading = ref(true)
 const showDeleteModal = ref(false)
 const deleting = ref(false)
+const singleUrl = ref('')
+const auditingSingle = ref(false)
+const auditRuns = ref([])
+const loadingAudits = ref(false)
+
+const goBack = () => {
+  router.back()
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A'
+  return new Date(dateString).toLocaleString()
+}
+
+const viewAudit = (auditId) => {
+  router.push(`/audits/${auditId}`)
+}
+
+async function fetchAuditHistory() {
+  if (!project.value) return
+  
+  loadingAudits.value = true
+  try {
+    const token = localStorage.getItem('token')
+    console.log('Fetching audit history for project:', project.value.id)
+    const response = await projectStore.fetchAuditHistory(project.value.id)
+    console.log('Audit history response:', response)
+    auditRuns.value = response || []
+    console.log('Audit runs set to:', auditRuns.value)
+  } catch (error) {
+    console.error('Failed to fetch audit history:', error)
+    auditRuns.value = []
+  } finally {
+    loadingAudits.value = false
+  }
+}
 
 onMounted(async () => {
   project.value = await projectStore.fetchProject(route.params.id)
   loading.value = false
+  
+  // Fetch audit history after project is loaded
+  if (project.value) {
+    await fetchAuditHistory()
+  }
 })
 
 async function handleStartAudit() {
@@ -132,6 +239,23 @@ async function handleStartAudit() {
     router.push(`/audits/${auditRun.id}`)
   } catch (error) {
     alert('Failed to start audit')
+  }
+}
+
+async function handleSingleUrlAudit() {
+  if (!singleUrl.value) {
+    alert('Please enter a URL')
+    return
+  }
+  
+  auditingSingle.value = true
+  try {
+    const auditRun = await projectStore.startSingleUrlAudit(project.value.id, singleUrl.value)
+    router.push(`/audits/${auditRun.id}`)
+  } catch (error) {
+    alert('Failed to start audit: ' + (error.response?.data?.error || error.message))
+  } finally {
+    auditingSingle.value = false
   }
 }
 

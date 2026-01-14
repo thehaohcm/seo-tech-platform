@@ -95,6 +95,7 @@ func main() {
 		audits.Use(api.AuthMiddleware())
 		{
 			audits.POST("/start", apiHandler.StartAudit)
+			audits.POST("/start-single", apiHandler.StartSingleUrlAudit)
 			audits.GET("/:id", apiHandler.GetAuditRun)
 			audits.GET("/project/:project_id", apiHandler.ListAuditRuns)
 			audits.GET("/:id/pages", apiHandler.GetAuditPages)

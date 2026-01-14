@@ -14,6 +14,17 @@
 
     <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div class="px-4 py-6 sm:px-0">
+        <!-- Back Button -->
+        <button
+          @click="goBack"
+          class="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+          </svg>
+          <span class="font-medium">Back</span>
+        </button>
+        
         <!-- Audit Info -->
         <div class="bg-white rounded-lg shadow p-6 mb-6">
           <div class="flex items-center justify-between mb-4">
@@ -263,15 +274,20 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 
 const route = useRoute()
+const router = useRouter()
 const auditRun = ref(null)
 const pageAudits = ref([])
 const loading = ref(true)
 const testStatus = ref({})
 let pollingInterval = null
+
+const goBack = () => {
+  router.back()
+}
 
 const generateAutoTest = async (page) => {
   const pageId = page.id

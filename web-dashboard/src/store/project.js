@@ -78,6 +78,29 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  async function startSingleUrlAudit(projectId, url) {
+    try {
+      const response = await axios.post('/api/v1/audits/start-single', { 
+        project_id: projectId,
+        url: url
+      })
+      return response.data.audit_run
+    } catch (error) {
+      console.error('Failed to start single URL audit:', error)
+      throw error
+    }
+  }
+
+  async function fetchAuditHistory(projectId) {
+    try {
+      const response = await axios.get(`/api/v1/audits/project/${projectId}`)
+      return response.data.audit_runs || []
+    } catch (error) {
+      console.error('Failed to fetch audit history:', error)
+      return []
+    }
+  }
+
   return {
     projects,
     currentProject,
@@ -87,6 +110,8 @@ export const useProjectStore = defineStore('project', () => {
     createProject,
     updateProject,
     deleteProject,
-    startAudit
+    startAudit,
+    startSingleUrlAudit,
+    fetchAuditHistory
   }
 })
