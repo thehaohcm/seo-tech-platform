@@ -66,6 +66,7 @@ services:
       - DB_USER=seouser
       - DB_PASSWORD=seopass
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     ports:
       - "8082:8082"
     depends_on:

@@ -8,6 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from code_generator import PlaywrightCodeGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +43,13 @@ class AutoTestRunner:
             'failed': 0,
             'test_details': [],
             'screenshot_url': None,
-            'execution_time': 0
+            'execution_time': 0,
+            'python_code': None  # Will store generated Playwright code
         }
         
         driver = None
         start_time = time.time()
+        html_content = ""
         
         try:
             driver = webdriver.Chrome(options=chrome_options)
@@ -55,6 +58,12 @@ class AutoTestRunner:
             # Load the page
             driver.get(url)
             time.sleep(2)  # Wait for page to stabilize
+            
+            # Capture HTML for code generation
+            try:
+                html_content = driver.page_source
+            except Exception as e:
+                logger.warning(f"Could not capture HTML: {str(e)}")
             
             # Run test suite
             test_methods = [
@@ -102,6 +111,17 @@ class AutoTestRunner:
             # Clean up screenshot file
             if os.path.exists(screenshot_path):
                 os.remove(screenshot_path)
+            
+            # Generate Playwright Python code
+            if html_content:
+                try:
+                    code_generator = PlaywrightCodeGenerator()
+                    python_code = code_generator.generate_page_object(html_content, url)
+                    results['python_code'] = python_code
+                    logger.info(f"Successfully generated Python code for {url}")
+                except Exception as e:
+                    logger.error(f"Failed to generate Python code: {str(e)}")
+                    results['python_code'] = None
                 
         except TimeoutException:
             results['status'] = 'failed'

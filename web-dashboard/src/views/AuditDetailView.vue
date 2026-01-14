@@ -223,6 +223,25 @@
                     </div>
                   </div>
                 </div>
+                
+                <!-- Download Python Code Button -->
+                <div v-if="testStatus[page.id].result.python_code" class="mt-4 pt-4 border-t border-gray-200">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-xs text-gray-500 mb-1">Playwright Page Object</p>
+                      <p class="text-xs text-gray-400">Auto-generated Python code for test automation</p>
+                    </div>
+                    <button
+                      @click="downloadPythonCode(page.id, page.url)"
+                      class="px-4 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition flex items-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                      </svg>
+                      Download Python Code
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div v-else-if="testStatus[page.id]?.error" class="bg-red-50 p-4 rounded">
@@ -355,6 +374,38 @@ const generateAutoTest = async (page) => {
       error: error.response?.data?.error || 'Failed to generate auto test'
     }
   }
+}
+
+const downloadPythonCode = (pageId, url) => {
+  const pythonCode = testStatus.value[pageId]?.result?.python_code
+  
+  if (!pythonCode) {
+    console.error('No Python code available')
+    return
+  }
+  
+  // Create blob from Python code
+  const blob = new Blob([pythonCode], { type: 'text/x-python' })
+  
+  // Generate filename from URL
+  const urlObj = new URL(url)
+  const hostname = urlObj.hostname.replace(/\./g, '_')
+  const pathname = urlObj.pathname.replace(/\//g, '_').replace(/\.$/, '') || 'index'
+  const filename = `page_object_${hostname}${pathname}.py`
+  
+  // Create download link
+  const downloadUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = downloadUrl
+  link.download = filename
+  
+  // Trigger download
+  document.body.appendChild(link)
+  link.click()
+  
+  // Cleanup
+  document.body.removeChild(link)
+  URL.revokeObjectURL(downloadUrl)
 }
 
 const openScreenshot = (url) => {
